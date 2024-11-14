@@ -1,6 +1,6 @@
-const express = require('express');
-const fetch = require('node-fetch');
-const path = require('path');
+import express from 'express';
+import fetch from 'node-fetch';
+import path from 'path';
 const app = express();
 const ACCESS_TOKEN = 'y0_AgAAAABpLP7zAADLWwAAAAEXc6WeAADAQDH86zJKj5USSGa7XLLGVQ44zQ';
 
