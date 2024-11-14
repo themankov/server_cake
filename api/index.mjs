@@ -13,13 +13,14 @@ app.use((req, res, next) => {
     next();
 });
 
-// Прокси для запросов к Яндекс.Диску
+
+// Обработка запросов на получение файла с Яндекс.Диска
 app.get('/disk/*', async (req, res) => {
     try {
         const filePath = req.path.replace('/disk', ''); // Убираем /disk из пути
         const yandexUrl = `https://cloud-api.yandex.net/v1/disk/resources/download?path=${encodeURIComponent(filePath)}`;
 
-        // Запрашиваем ссылку для скачивания у Яндекс.Диска
+        // Запрашиваем ссылку для скачивания файла у Яндекс.Диска
         const yandexResponse = await fetch(yandexUrl, {
             headers: {
                 Authorization: `OAuth ${ACCESS_TOKEN}`,
@@ -33,12 +34,25 @@ app.get('/disk/*', async (req, res) => {
         const yandexData = await yandexResponse.json();
         const downloadUrl = yandexData.href;
 
-        // Делаем запрос по полученной ссылке на скачивание
+        // Делаем запрос по полученной ссылке для скачивания файла
         const downloadResponse = await fetch(downloadUrl);
-        const fileData = await downloadResponse.json();
+        if (!downloadResponse.ok) {
+            throw new Error(`Ошибка при скачивании файла: ${downloadResponse.statusText}`);
+        }
 
-        // Отправляем данные на фронтенд
-        res.json(fileData);
+        // Проверка типа контента
+        const contentType = downloadResponse.headers.get('content-type');
+        res.setHeader('Content-Type', contentType);
+
+        if (contentType.includes('application/json')) {
+            // Если файл текстовый (JSON), обрабатываем его как JSON
+            const jsonData = await downloadResponse.json();
+            res.json(jsonData);
+        } else {
+            // Если файл является изображением или другим бинарным файлом, передаем потоковые данные напрямую
+            res.setHeader('Content-Disposition', 'inline');
+            downloadResponse.body.pipe(res);
+        }
     } catch (error) {
         console.error('Ошибка при проксировании запроса:', error);
         res.status(500).json({ error: error.message });
